@@ -15,4 +15,6 @@ public interface IJPAUserRepository extends CrudRepository<UserEntity, UUID> {
     Optional<UserEntity> findUserByEmailAndPassword(String email, String password);
 
     Optional<UserEntity> findUserEntityById(UUID id);
+
+    Optional<UserEntity> findByEmail(String username);
 }

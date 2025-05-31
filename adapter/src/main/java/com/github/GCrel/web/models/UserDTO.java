@@ -1,30 +1,31 @@
-package com.github.GCrel.data.models;
+package com.github.GCrel.web.models;
 
-import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import models.User;
 import models.vo.Role;
 
 import java.util.UUID;
 
-@Entity
-@Table(name = "users")
+@JsonIgnoreProperties(ignoreUnknown = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Getter
 @Setter
-public class UserEntity {
-    @Id
+public class UserDTO {
     private UUID id;
+    @Size(min = 3, max = 20, message = "Username must be between 3 and 20 characters")
     private String username;
+    @Email
     private String email;
     private String password;
-    @Enumerated(EnumType.STRING)
     private Role role;
 
-    public static UserEntity toUserEntity(User user) {
-        return UserEntity.builder()
+    public static UserDTO toUserDTO(User user) {
+        return UserDTO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())

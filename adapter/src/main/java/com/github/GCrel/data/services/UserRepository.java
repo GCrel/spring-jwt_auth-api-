@@ -6,10 +6,13 @@ import com.github.GCrel.data.models.UserEntity;
 import com.github.GCrel.data.services.exception.DataBaseException;
 import models.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import port.output.IUserRepository;
 
+import javax.naming.AuthenticationException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,10 +22,13 @@ import java.util.stream.StreamSupport;
 public class UserRepository implements IUserRepository {
     private final IJPAUserRepository jpaUserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+
     @Autowired
-    public UserRepository(IJPAUserRepository jpaUserRepository, PasswordEncoder passwordEncoder) {
+    public UserRepository(IJPAUserRepository jpaUserRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager) {
         this.jpaUserRepository = jpaUserRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
     }
 
     @Override
@@ -46,13 +52,12 @@ public class UserRepository implements IUserRepository {
 
     @Override
     public Optional<User> validateUser(String email, String password) {
-        UserEntity userEntity = jpaUserRepository.findUserByEmailAndPassword(email, password)
-                .orElseThrow(() -> new DataBaseException("Could not find user with email:" + email));
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, password)
+        );
 
-        if (!passwordEncoder.matches(password, userEntity.getPassword())) {
-            return Optional.empty();
-        }
-        return Optional.of(userEntity.toUser());
+        Optional<UserEntity> userEntityOpt = jpaUserRepository.findByEmail(email);
+        return userEntityOpt.map(UserEntity::toUser);
     }
 
     @Override
