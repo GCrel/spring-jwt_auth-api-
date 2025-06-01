@@ -2,8 +2,8 @@ package com.github.GCrel.web.controller;
 
 import application.exceptions.UserNotFoundException;
 import com.github.GCrel.web.models.UserDTO;
-import com.github.GCrel.web.services.JWTService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,10 +16,11 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/users")
-public class DeleteController {
+public class DeleteUserController {
     private final IDeleteUserInput deleteUserUseCase;
 
-    public DeleteController(IDeleteUserInput deleteUserUseCase) {
+    @Autowired
+    public DeleteUserController(IDeleteUserInput deleteUserUseCase) {
         this.deleteUserUseCase = deleteUserUseCase;
     }
 

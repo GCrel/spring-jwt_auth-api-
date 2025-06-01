@@ -1,27 +1,19 @@
 package com.github.GCrel.web.config;
 
-import application.DeteleUser;
-import application.GetAllUsers;
-import application.GetUserById;
-import application.LoginUser;
+import application.*;
 import com.github.GCrel.data.jpa.IJPAUserRepository;
 import com.github.GCrel.data.models.UserEntity;
 import com.github.GCrel.web.services.JWTService;
-import models.User;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
 import port.input.*;
 import port.output.IUserRepository;
 
@@ -33,7 +25,6 @@ public class AppConfig {
     public AppConfig(IJPAUserRepository jpaUserRepository) {
         this.jpaUserRepository = jpaUserRepository;
     }
-
 
     // This class is used to define beans for the application context.
     @Bean
@@ -61,6 +52,11 @@ public class AppConfig {
         return new DeteleUser(userRepository);
     }
 
+    @Bean
+    public IUpdateUserInput getUpdateUserInput(IUserRepository userRepository) {
+        return new UpdateUser(userRepository);
+    }
+
     // Define a PasswordEncoder bean for password hashing
     @Bean
     public PasswordEncoder getPasswordEncoder() {
@@ -73,6 +69,7 @@ public class AppConfig {
         return new JWTService();
     }
 
+    // Authentication and Authorization Configuration
     @Bean
     public UserDetailsService getUserDetailsService() {
         return username -> {
