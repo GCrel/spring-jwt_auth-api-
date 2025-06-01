@@ -1,5 +1,6 @@
-package com.github.GCrel.config;
+package com.github.GCrel.web.config;
 
+import application.DeteleUser;
 import application.GetAllUsers;
 import application.GetUserById;
 import application.LoginUser;
@@ -21,10 +22,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import port.input.IGetAllUsersInput;
-import port.input.IGetUserByIdInput;
-import port.input.ILoginUserInput;
-import port.input.IRegisterUserInput;
+import port.input.*;
 import port.output.IUserRepository;
 
 @Configuration
@@ -56,6 +54,11 @@ public class AppConfig {
     @Bean
     public IRegisterUserInput getRegisterUserInput(IUserRepository userRepository) {
         return new application.RegisterUser(userRepository);
+    }
+
+    @Bean
+    public IDeleteUserInput getDeleteUserInput(IUserRepository userRepository) {
+        return new DeteleUser(userRepository);
     }
 
     // Define a PasswordEncoder bean for password hashing
