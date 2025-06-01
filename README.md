@@ -5,7 +5,19 @@ API REST para registro, login y gestión de usuarios con roles y seguridad JWT.
 ## 🔐 Funcionalidades
 - Registro de usuario (`/auth/register`)
 - Login y obtención de JWT (`/auth/login`)
-- CRUD de usuarios con control de acceso (solo admin)
+- Roles de usuario: ADMIN y USER
+- Gestión de usuarios:
+  - Obtener todos los usuarios (`/users`) (ADMIN)
+  - Obtener usuario por ID (`/users/{id}`) (ADMIN, USER propio)
+  - Actualizar usuario (`/users/{id}`) (ADMIN, USER propio)
+  - Eliminar usuario (`/users/{id}`) (ADMIN)
+
+Puedes ver los endpoints y probarlos en la documentación Swagger en la url `http://localhost:8080/swagger-ui/index.html`:
+
+![Swagger UI](docs/img/swagger-ui_API.png)
+
+## 📚 Pruevas Realizadas
+- [Documentación de la API](docs/API_testing.md)
 
 ## 🛡️ Seguridad
 - Spring Security + JWT
@@ -25,3 +37,27 @@ API REST para registro, login y gestión de usuarios con roles y seguridad JWT.
 ```bash
 ./mvnw spring-boot:run -pl adapter
 ```
+
+## 🧱 Arquitectura del Proyecto
+
+Este proyecto sigue los principios de la **Arquitectura Limpia (Clean Architecture)**. La estructura se divide claramente en dos capas principales:
+
+### 🔵 Core
+Contiene la lógica de negocio y las abstracciones del sistema. Esta capa es independiente de cualquier tecnología externa.
+
+- **User**: Entidad principal del dominio.
+- **UseCase**: Contiene los casos de uso que encapsulan la lógica de negocio.
+- **IUserRepository / IUseCaseInput**: Interfaces que definen contratos para la interacción con otras capas.
+
+### 🔴 Infraestructura
+Implementa las interfaces definidas en el núcleo y maneja detalles como almacenamiento, entrada/salida, y transporte.
+
+- **UserRepository**: Implementación concreta del repositorio de usuarios.
+- **ApiControllers**: Encargados de manejar las peticiones HTTP.
+- **UserEntity / UserDTO**: Representaciones para la base de datos y transferencia de datos.
+
+### 📐 Diagrama de Arquitectura
+
+A continuación se muestra el diagrama que representa esta separación basada en Clean Architecture:
+
+![Diagrama de Arquitectura Limpia](./docs/img/architecture.png)
