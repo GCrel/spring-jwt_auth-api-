@@ -32,9 +32,29 @@ Puedes ver los endpoints y probarlos en la documentación Swagger en la url `htt
 - JPA + PostgreSQL
 - Swagger (documentación de la API)
 
+## Configuración de la base de datos
+
+1. Ejecuta el contenedor de PostgreSQL con Docker:
+
+```bash
+docker run --name postgres-db -e POSTGRES_USER=gcrel -e POSTGRES_PASSWORD=Pruevas_JV -p 5432:5432 -d postgres
+```
+2. Accede al contenedor:
+
+```bash
+docker exec -it postgres-db psql -U gcrel
+```
+
+3. Crea la base de datos:
+
+```sql
+CREATE DATABASE user_management;
+```
+
 ## ▶️ Cómo correr
 
 ```bash
+./mvnw clean install # Compila el proyecto y descarga dependencias
 ./mvnw spring-boot:run -pl adapter
 ```
 

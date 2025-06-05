@@ -6,137 +6,333 @@ import com.github.GCrel.data.services.UserRepository;
 import com.github.GCrel.data.services.exception.DataBaseException;
 import models.User;
 import models.vo.Role;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserRepositoryTest {
-
     @Mock
     private IJPAUserRepository jpaUserRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private AuthenticationManager authenticationManager;
+
     @InjectMocks
     private UserRepository userRepository;
 
-    private final User user = new User("username", "email@example.com", "encodedPassword", Role.USER);
+    private User testUser;
+    private UserEntity testUserEntity;
+    private UUID testUserId;
+
+    @BeforeEach
+    void setUp() {
+        testUserId = UUID.randomUUID();
+        testUser = new User("testuser", "test@example.com", "password123",Role.USER);
+        testUser.setId(testUserId);
+        testUserEntity = UserEntity.toUserEntity(testUser);
+    }
 
     @Test
-    void testExistsByEmail() {
-        when(jpaUserRepository.existsByEmail("email@example.com")).thenReturn(true);
-        boolean result = userRepository.existsByEmail("email@example.com");
+    void existsByEmail_ShouldReturnTrue_WhenEmailExists() {
+        // Given
+        String email = "test@example.com";
+        when(jpaUserRepository.existsByEmail(email)).thenReturn(true);
+
+        // When
+        boolean result = userRepository.existsByEmail(email);
+
+        // Then
         assertTrue(result);
+        verify(jpaUserRepository).existsByEmail(email);
     }
 
     @Test
-    void testExistsByUsername() {
-        when(jpaUserRepository.existsByUsername("username")).thenReturn(true);
-        boolean result = userRepository.existsByUsername("username");
+    void existsByEmail_ShouldReturnFalse_WhenEmailDoesNotExist() {
+        // Given
+        String email = "nonexistent@example.com";
+        when(jpaUserRepository.existsByEmail(email)).thenReturn(false);
+
+        // When
+        boolean result = userRepository.existsByEmail(email);
+
+        // Then
+        assertFalse(result);
+        verify(jpaUserRepository).existsByEmail(email);
+    }
+
+    @Test
+    void existsByUsername_ShouldReturnTrue_WhenUsernameExists() {
+        // Given
+        String username = "testuser";
+        when(jpaUserRepository.existsByUsername(username)).thenReturn(true);
+
+        // When
+        boolean result = userRepository.existsByUsername(username);
+
+        // Then
         assertTrue(result);
+        verify(jpaUserRepository).existsByUsername(username);
     }
 
     @Test
-    void testSaveUserSuccess() {
-        UserEntity entity = UserEntity.toUserEntity(user);
-        when(jpaUserRepository.save(any(UserEntity.class))).thenReturn(entity);
-        User result = userRepository.saveUser(user);
-        assertEquals(user.getEmail(), result.getEmail());
+    void existsByUsername_ShouldReturnFalse_WhenUsernameDoesNotExist() {
+        // Given
+        String username = "nonexistentuser";
+        when(jpaUserRepository.existsByUsername(username)).thenReturn(false);
+
+        // When
+        boolean result = userRepository.existsByUsername(username);
+
+        // Then
+        assertFalse(result);
+        verify(jpaUserRepository).existsByUsername(username);
     }
 
     @Test
-    void testSaveUserThrowsException() {
-        when(jpaUserRepository.save(any(UserEntity.class))).thenThrow(new DataBaseException("DB error"));
-        assertThrows(DataBaseException.class, () -> userRepository.saveUser(user));
+    void saveUser_ShouldReturnSavedUser_WhenSuccessful() {
+        // Given
+        UserEntity savedUserEntity = UserEntity.builder()
+                .id(testUserId)
+                .username("testuser")
+                .email("test@example.com")
+                .password("encodedPassword")
+                .role(Role.USER)
+                .build();
+        when(jpaUserRepository.save(any(UserEntity.class))).thenReturn(savedUserEntity);
+
+        // When
+        User result = userRepository.saveUser(testUser);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(testUserId, result.getId());
+        assertEquals("testuser", result.getUsername());
+        assertEquals("test@example.com", result.getEmail());
+        verify(jpaUserRepository).save(any(UserEntity.class));
     }
 
     @Test
-    void testValidateUserSuccess() {
-        String rawPassword = "password";
-        UserEntity entity = UserEntity.toUserEntity(user);
-        entity.setPassword("hashedPassword");
+    void saveUser_ShouldThrowDataBaseException_WhenSaveFails() {
+        // Given
+        when(jpaUserRepository.save(any(UserEntity.class)))
+                .thenThrow(new DataBaseException("Database error"));
 
-        when(jpaUserRepository.findUserByEmailAndPassword(user.getEmail(), rawPassword)).thenReturn(Optional.of(entity));
-        when(passwordEncoder.matches(rawPassword, "hashedPassword")).thenReturn(true);
+        // When & Then
+        DataBaseException exception = assertThrows(DataBaseException.class,
+                () -> userRepository.saveUser(testUser));
 
-        Optional<User> result = userRepository.validateUser(user.getEmail(), rawPassword);
+        assertTrue(exception.getMessage().contains("Could not save user"));
+        verify(jpaUserRepository).save(any(UserEntity.class));
+    }
+
+    @Test
+    void validateUser_ShouldReturnUser_WhenCredentialsAreValid() {
+        // Given
+        String email = "test@example.com";
+        String password = "password123";
+
+        // No necesitas doNothing() aquí
+        when(jpaUserRepository.findByEmail(email)).thenReturn(Optional.of(testUserEntity));
+
+        // When
+        Optional<User> result = userRepository.validateUser(email, password);
+
+        // Then
         assertTrue(result.isPresent());
+        assertEquals(testUser.getEmail(), result.get().getEmail());
+        assertEquals(testUser.getUsername(), result.get().getUsername());
+
+        verify(authenticationManager).authenticate(
+                argThat(token -> token.getPrincipal().equals(email) &&
+                        token.getCredentials().equals(password))
+        );
+        verify(jpaUserRepository).findByEmail(email);
     }
 
     @Test
-    void testValidateUserWrongPassword() {
-        String rawPassword = "wrong";
-        UserEntity entity = UserEntity.toUserEntity(user);
-        entity.setPassword("hashedPassword");
+    void validateUser_ShouldThrowException_WhenCredentialsAreInvalid() {
+        // Given
+        String email = "test@example.com";
+        String password = "wrongpassword";
 
-        when(jpaUserRepository.findUserByEmailAndPassword(user.getEmail(), rawPassword)).thenReturn(Optional.of(entity));
-        when(passwordEncoder.matches(rawPassword, "hashedPassword")).thenReturn(false);
+        doThrow(new BadCredentialsException("Invalid credentials"))
+                .when(authenticationManager)
+                .authenticate(any(UsernamePasswordAuthenticationToken.class));
 
-        Optional<User> result = userRepository.validateUser(user.getEmail(), rawPassword);
+        // When & Then
+        assertThrows(BadCredentialsException.class,
+                () -> userRepository.validateUser(email, password));
+
+        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        verify(jpaUserRepository, never()).findByEmail(anyString());
+    }
+
+    @Test
+    void validateUser_ShouldReturnEmpty_WhenUserNotFoundAfterAuthentication() {
+        // Given
+        String email = "test@example.com";
+        String password = "password123";
+
+        doAnswer(invocation -> null)
+                .when(authenticationManager)
+                .authenticate(any(UsernamePasswordAuthenticationToken.class));
+
+        when(jpaUserRepository.findByEmail(email)).thenReturn(Optional.empty());
+
+        // When
+        Optional<User> result = userRepository.validateUser(email, password);
+
+        // Then
+        assertFalse(result.isPresent());
+        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        verify(jpaUserRepository).findByEmail(email);
+    }
+
+    @Test
+    void findAllUsers_ShouldReturnListOfUsers_WhenUsersExist() {
+        // Given
+        UserEntity user1 = UserEntity.builder()
+                .id(UUID.randomUUID())
+                .username("user1")
+                .email("user1@example.com")
+                .password("pass1")
+                .role(Role.USER)
+                .build();
+        UserEntity user2 = UserEntity.builder()
+                .id(UUID.randomUUID())
+                .username("user2")
+                .email("user2@example.com")
+                .password("pass2")
+                .role(Role.USER)
+                .build();
+        List<UserEntity> userEntities = Arrays.asList(user1, user2);
+
+        when(jpaUserRepository.findAll()).thenReturn(userEntities);
+
+        // When
+        List<User> result = userRepository.findAllUsers();
+
+        // Then
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals("user1", result.get(0).getUsername());
+        assertEquals("user2", result.get(1).getUsername());
+        verify(jpaUserRepository).findAll();
+    }
+
+    @Test
+    void findAllUsers_ShouldReturnEmptyList_WhenNoUsersExist() {
+        // Given
+        when(jpaUserRepository.findAll()).thenReturn(Collections.emptyList());
+
+        // When
+        List<User> result = userRepository.findAllUsers();
+
+        // Then
+        assertNotNull(result);
         assertTrue(result.isEmpty());
+        verify(jpaUserRepository).findAll();
     }
 
     @Test
-    void testFindAllUsers() {
-        List<UserEntity> entities = List.of(UserEntity.toUserEntity(user));
-        when(jpaUserRepository.findAll()).thenReturn(entities);
+    void findUserById_ShouldReturnUser_WhenUserExists() {
+        // Given
+        when(jpaUserRepository.findById(testUserId)).thenReturn(Optional.of(testUserEntity));
 
-        List<User> users = userRepository.findAllUsers();
-        assertEquals(1, users.size());
-        assertEquals(user.getEmail(), users.get(0).getEmail());
-    }
+        // When
+        Optional<User> result = userRepository.findUserById(testUserId);
 
-    @Test
-    void testFindUserById() {
-        UUID id = user.getId();
-        when(jpaUserRepository.findById(id)).thenReturn(Optional.of(UserEntity.toUserEntity(user)));
-
-        Optional<User> result = userRepository.findUserById(id);
+        // Then
         assertTrue(result.isPresent());
-        assertEquals(user.getId(), result.get().getId());
+        assertEquals(testUserId, result.get().getId());
+        assertEquals("testuser", result.get().getUsername());
+        verify(jpaUserRepository).findById(testUserId);
     }
 
     @Test
-    void testUpdateUser() {
-        UserEntity entity = UserEntity.toUserEntity(user);
-        when(jpaUserRepository.save(any(UserEntity.class))).thenReturn(entity);
+    void findUserById_ShouldReturnEmpty_WhenUserDoesNotExist() {
+        // Given
+        when(jpaUserRepository.findById(testUserId)).thenReturn(Optional.empty());
 
-        User updated = userRepository.updateUser(user);
-        assertEquals(user.getId(), updated.getId());
+        // When
+        Optional<User> result = userRepository.findUserById(testUserId);
+
+        // Then
+        assertFalse(result.isPresent());
+        verify(jpaUserRepository).findById(testUserId);
     }
 
     @Test
-    void testDeleteUserSuccess() {
-        UserEntity entity = UserEntity.toUserEntity(user);
-        UUID id = user.getId();
+    void updateUser_ShouldReturnUpdatedUser_WhenSuccessful() {
+        // Given
+        User updatedUser = new User("updateduser", "updated@example.com", "newpassword", Role.USER);
+        updatedUser.setId(testUserId);
+        UserEntity updatedUserEntity = UserEntity.toUserEntity(updatedUser);
 
-        when(jpaUserRepository.findById(id)).thenReturn(Optional.of(entity));
-        doNothing().when(jpaUserRepository).deleteById(id);
+        when(jpaUserRepository.save(any(UserEntity.class))).thenReturn(updatedUserEntity);
 
-        Optional<User> result = userRepository.deleteUser(id);
+        // When
+        User result = userRepository.updateUser(updatedUser);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(testUserId, result.getId());
+        assertEquals("updateduser", result.getUsername());
+        assertEquals("updated@example.com", result.getEmail());
+        verify(jpaUserRepository).save(any(UserEntity.class));
+    }
+
+    @Test
+    void deleteUser_ShouldReturnDeletedUser_WhenUserExists() {
+        // Given
+        when(jpaUserRepository.findById(testUserId)).thenReturn(Optional.of(testUserEntity));
+        doNothing().when(jpaUserRepository).deleteById(testUserId);
+
+        // When
+        Optional<User> result = userRepository.deleteUser(testUserId);
+
+        // Then
         assertTrue(result.isPresent());
-        assertEquals(user.getId(), result.get().getId());
+        assertEquals(testUserId, result.get().getId());
+        assertEquals("testuser", result.get().getUsername());
+        verify(jpaUserRepository).findById(testUserId);
+        verify(jpaUserRepository).deleteById(testUserId);
     }
 
     @Test
-    void testDeleteUserNotFound() {
-        UUID id = UUID.randomUUID();
-        when(jpaUserRepository.findById(id)).thenReturn(Optional.empty());
+    void deleteUser_ShouldThrowDataBaseException_WhenUserDoesNotExist() {
+        // Given
+        when(jpaUserRepository.findById(testUserId)).thenReturn(Optional.empty());
 
-        assertThrows(DataBaseException.class, () -> userRepository.deleteUser(id));
+        // When & Then
+        DataBaseException exception = assertThrows(DataBaseException.class,
+                () -> userRepository.deleteUser(testUserId));
+
+        assertTrue(exception.getMessage().contains("Task with ID " + testUserId + " not found"));
+        verify(jpaUserRepository).findById(testUserId);
+        verify(jpaUserRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void constructor_ShouldInjectDependencies() {
+        // When & Then
+        assertNotNull(userRepository);
     }
 }
